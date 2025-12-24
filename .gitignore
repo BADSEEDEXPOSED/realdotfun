@@ -1,0 +1,7 @@
+_backup_v2/
+index.vanilla.html
+node_modules/
+.DS_Store
+implementation_plan.md
+walkthrough.md
+task.md
